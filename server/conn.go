@@ -29,6 +29,7 @@ type Conn struct {
 	user                string
 	password            string
 	cachingSha2FullAuth bool
+	dbname              string
 
 	h Handler
 
@@ -99,6 +100,34 @@ func NewCustomizedConn(conn net.Conn, serverConf *Server, p CredentialProvider, 
 	return c, nil
 }
 
+// NewPrefabricateConn: create connection with not commamd handlers
+// You can choose which servehandler to use based on the dbname
+func NewPrefabricateConn(conn net.Conn, serverConf *Server, p CredentialProvider) (*Conn, error) {
+	var packetConn *packet.Conn
+	if serverConf.tlsConfig != nil {
+		packetConn = packet.NewTLSConn(conn)
+	} else {
+		packetConn = packet.NewConn(conn)
+	}
+
+	c := &Conn{
+		Conn:               packetConn,
+		serverConf:         serverConf,
+		credentialProvider: p,
+		connectionID:       atomic.AddUint32(&baseConnID, 1),
+		stmts:              make(map[uint32]*Stmt),
+		salt:               RandomBuf(20),
+	}
+	c.closed.Set(false)
+
+	if err := c.handshake(); err != nil {
+		c.Close()
+		return nil, err
+	}
+
+	return c, nil
+}
+
 func (c *Conn) handshake() error {
 	if err := c.writeInitialHandshake(); err != nil {
 		return err
@@ -136,6 +165,10 @@ func (c *Conn) Closed() bool {
 
 func (c *Conn) GetUser() string {
 	return c.user
+}
+
+func (c *Conn) GetDBName() string {
+	return c.dbname
 }
 
 func (c *Conn) Capability() uint32 {
@@ -196,4 +229,8 @@ func (c *Conn) HasStatus(status uint16) bool {
 
 func (c *Conn) SetWarnings(warnings uint16) {
 	c.warnings = warnings
+}
+
+func (c *Conn) SetHandler(h Handler) {
+	c.h = h
 }
