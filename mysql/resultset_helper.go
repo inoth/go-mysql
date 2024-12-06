@@ -52,7 +52,11 @@ func toBinaryDateTime(t time.Time) ([]byte, error) {
 		buf.WriteByte(byte(day))
 	}
 
-	return buf.Bytes(), nil
+	var buffer bytes.Buffer
+	buffer.WriteByte(byte(len(buf.Bytes())))
+	buffer.Write(buf.Bytes())
+
+	return buffer.Bytes(), nil
 }
 
 func FormatTextValue(value interface{}) ([]byte, error) {
@@ -162,11 +166,8 @@ func formatField(field *Field, value interface{}) error {
 	case float32, float64:
 		field.Charset = 63
 		field.Flag = BINARY_FLAG | NOT_NULL_FLAG
-	case string, []byte:
+	case string, []byte, time.Time:
 		field.Charset = 33
-	case time.Time:
-		field.Charset = 33
-		field.DefaultValueLength = 11
 	case nil:
 		field.Charset = 33
 	default:

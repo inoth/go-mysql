@@ -167,10 +167,6 @@ func (c *Conn) GetUser() string {
 	return c.user
 }
 
-func (c *Conn) GetDBName() string {
-	return c.dbname
-}
-
 func (c *Conn) Capability() uint32 {
 	return c.capability
 }
@@ -229,6 +225,10 @@ func (c *Conn) HasStatus(status uint16) bool {
 
 func (c *Conn) SetWarnings(warnings uint16) {
 	c.warnings = warnings
+}
+
+func (c *Conn) GetDBName() string {
+	return c.dbname
 }
 
 func (c *Conn) SetHandler(h Handler) {
