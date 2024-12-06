@@ -90,7 +90,7 @@ func FormatTextValue(value interface{}) ([]byte, error) {
 	case string:
 		return hack.Slice(v), nil
 	case time.Time:
-		return toBinaryDateTime(v)
+		return hack.Slice(v.Format(time.DateTime)), nil
 	case nil:
 		return nil, nil
 	default:
