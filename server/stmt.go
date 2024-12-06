@@ -6,7 +6,7 @@ import (
 	"math"
 	"strconv"
 
-	. "github.com/go-mysql-org/go-mysql/mysql"
+	. "github.com/inoth/go-mysql/mysql"
 	"github.com/pingcap/errors"
 )
 

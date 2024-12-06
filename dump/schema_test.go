@@ -10,8 +10,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/go-mysql-org/go-mysql/client"
-	"github.com/go-mysql-org/go-mysql/test_util"
+	"github.com/inoth/go-mysql/client"
+	"github.com/inoth/go-mysql/test_util"
 )
 
 type schemaTestSuite struct {

@@ -3,8 +3,8 @@ package driver
 import (
 	"time"
 
-	"github.com/go-mysql-org/go-mysql/client"
-	"github.com/go-mysql-org/go-mysql/mysql"
+	"github.com/inoth/go-mysql/client"
+	"github.com/inoth/go-mysql/mysql"
 	"github.com/pingcap/errors"
 )
 

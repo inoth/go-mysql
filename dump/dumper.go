@@ -10,7 +10,7 @@ import (
 	"regexp"
 	"strings"
 
-	. "github.com/go-mysql-org/go-mysql/mysql"
+	. "github.com/inoth/go-mysql/mysql"
 	"github.com/pingcap/errors"
 	"github.com/siddontang/go-log/log"
 	"github.com/siddontang/go-log/loggers"

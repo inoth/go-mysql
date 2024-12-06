@@ -13,9 +13,9 @@ import (
 	"net"
 	"time"
 
-	"github.com/go-mysql-org/go-mysql/compress"
-	. "github.com/go-mysql-org/go-mysql/mysql"
-	"github.com/go-mysql-org/go-mysql/utils"
+	"github.com/inoth/go-mysql/compress"
+	. "github.com/inoth/go-mysql/mysql"
+	"github.com/inoth/go-mysql/utils"
 	"github.com/klauspost/compress/zstd"
 	"github.com/pingcap/errors"
 )
@@ -31,7 +31,7 @@ type Conn struct {
 	writeTimeout time.Duration
 
 	// Buffered reader for net.Conn in Non-TLS connection only to address replication performance issue.
-	// See https://github.com/go-mysql-org/go-mysql/pull/422 for more details.
+	// See https://github.com/inoth/go-mysql/pull/422 for more details.
 	br     *bufio.Reader
 	reader io.Reader
 

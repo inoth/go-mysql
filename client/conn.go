@@ -13,9 +13,9 @@ import (
 	"github.com/pingcap/errors"
 	"github.com/pingcap/tidb/pkg/parser/charset"
 
-	. "github.com/go-mysql-org/go-mysql/mysql"
-	"github.com/go-mysql-org/go-mysql/packet"
-	"github.com/go-mysql-org/go-mysql/utils"
+	. "github.com/inoth/go-mysql/mysql"
+	"github.com/inoth/go-mysql/packet"
+	"github.com/inoth/go-mysql/utils"
 )
 
 const defaultBufferSize = 65536 // 64kb

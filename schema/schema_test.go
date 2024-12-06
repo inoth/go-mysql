@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/go-mysql-org/go-mysql/client"
-	_ "github.com/go-mysql-org/go-mysql/driver"
-	"github.com/go-mysql-org/go-mysql/test_util"
+	"github.com/inoth/go-mysql/client"
+	_ "github.com/inoth/go-mysql/driver"
+	"github.com/inoth/go-mysql/test_util"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )

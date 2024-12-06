@@ -19,9 +19,9 @@ import (
 	"github.com/siddontang/go/log"
 	"github.com/stretchr/testify/require"
 
-	"github.com/go-mysql-org/go-mysql/client"
-	"github.com/go-mysql-org/go-mysql/mysql"
-	"github.com/go-mysql-org/go-mysql/server"
+	"github.com/inoth/go-mysql/client"
+	"github.com/inoth/go-mysql/mysql"
+	"github.com/inoth/go-mysql/server"
 )
 
 var _ server.Handler = &mockHandler{}

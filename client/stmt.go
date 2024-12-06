@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"math"
 
-	. "github.com/go-mysql-org/go-mysql/mysql"
-	"github.com/go-mysql-org/go-mysql/utils"
+	. "github.com/inoth/go-mysql/mysql"
+	"github.com/inoth/go-mysql/utils"
 	"github.com/pingcap/errors"
 )
 

@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/go-mysql-org/go-mysql/mysql"
-	. "github.com/go-mysql-org/go-mysql/mysql"
-	"github.com/go-mysql-org/go-mysql/replication"
+	"github.com/inoth/go-mysql/mysql"
+	. "github.com/inoth/go-mysql/mysql"
+	"github.com/inoth/go-mysql/replication"
 	"github.com/siddontang/go/hack"
 )
 
