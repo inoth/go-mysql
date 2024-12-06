@@ -25,6 +25,7 @@ func toBinaryDateTime(t time.Time) ([]byte, error) {
 	if nanosec > 0 {
 		// 11 字节格式：包含日期、时分秒和纳秒
 		// 将年份（2字节）、月份（1字节）、日期（1字节）写入
+		buf.WriteByte(byte(11))
 		binary.Write(&buf, binary.LittleEndian, uint16(year))
 		buf.WriteByte(byte(month))
 		buf.WriteByte(byte(day))
@@ -37,6 +38,7 @@ func toBinaryDateTime(t time.Time) ([]byte, error) {
 	} else if hour > 0 || min > 0 || sec > 0 {
 		// 7 字节格式：包含日期和时分秒
 		// 将年份（2字节）、月份（1字节）、日期（1字节）写入
+		buf.WriteByte(byte(7))
 		binary.Write(&buf, binary.LittleEndian, uint16(year))
 		buf.WriteByte(byte(month))
 		buf.WriteByte(byte(day))
@@ -47,16 +49,13 @@ func toBinaryDateTime(t time.Time) ([]byte, error) {
 	} else {
 		// 4 字节格式：只包含日期，时分秒为0
 		// 将年份（2字节）、月份（1字节）、日期（1字节）写入
+		buf.WriteByte(byte(4))
 		binary.Write(&buf, binary.LittleEndian, uint16(year))
 		buf.WriteByte(byte(month))
 		buf.WriteByte(byte(day))
 	}
 
-	var buffer bytes.Buffer
-	buffer.WriteByte(byte(len(buf.Bytes())))
-	buffer.Write(buf.Bytes())
-
-	return buffer.Bytes(), nil
+	return buf.Bytes(), nil
 }
 
 func FormatTextValue(value interface{}) ([]byte, error) {
