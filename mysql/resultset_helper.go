@@ -23,34 +23,25 @@ func toBinaryDateTime(t time.Time) ([]byte, error) {
 	nanosec := t.Nanosecond()
 
 	if nanosec > 0 {
-		// 11 字节格式：包含日期、时分秒和纳秒
-		// 将年份（2字节）、月份（1字节）、日期（1字节）写入
 		buf.WriteByte(byte(11))
-		binary.Write(&buf, binary.LittleEndian, uint16(year))
+		_ = binary.Write(&buf, binary.LittleEndian, uint16(year))
 		buf.WriteByte(byte(month))
 		buf.WriteByte(byte(day))
-		// 写入时分秒（各1字节）
 		buf.WriteByte(byte(hour))
 		buf.WriteByte(byte(min))
 		buf.WriteByte(byte(sec))
-		// 写入纳秒（4字节）
-		binary.Write(&buf, binary.LittleEndian, uint32(nanosec/1000)) // 纳秒除以1000转换为微秒
+		_ = binary.Write(&buf, binary.LittleEndian, uint32(nanosec/1000)) // 纳秒除以1000转换为微秒
 	} else if hour > 0 || min > 0 || sec > 0 {
-		// 7 字节格式：包含日期和时分秒
-		// 将年份（2字节）、月份（1字节）、日期（1字节）写入
 		buf.WriteByte(byte(7))
-		binary.Write(&buf, binary.LittleEndian, uint16(year))
+		_ = binary.Write(&buf, binary.LittleEndian, uint16(year))
 		buf.WriteByte(byte(month))
 		buf.WriteByte(byte(day))
-		// 写入时分秒（各1字节）
 		buf.WriteByte(byte(hour))
 		buf.WriteByte(byte(min))
 		buf.WriteByte(byte(sec))
 	} else {
-		// 4 字节格式：只包含日期，时分秒为0
-		// 将年份（2字节）、月份（1字节）、日期（1字节）写入
 		buf.WriteByte(byte(4))
-		binary.Write(&buf, binary.LittleEndian, uint16(year))
+		_ = binary.Write(&buf, binary.LittleEndian, uint16(year))
 		buf.WriteByte(byte(month))
 		buf.WriteByte(byte(day))
 	}
