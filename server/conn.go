@@ -26,6 +26,7 @@ type Conn struct {
 	credentialProvider  CredentialProvider
 	user                string
 	password            string
+	dbname              string
 	cachingSha2FullAuth bool
 
 	h Handler
@@ -83,6 +84,33 @@ func NewCustomizedConn(conn net.Conn, serverConf *Server, p CredentialProvider, 
 		serverConf:         serverConf,
 		credentialProvider: p,
 		h:                  h,
+		connectionID:       atomic.AddUint32(&baseConnID, 1),
+		stmts:              make(map[uint32]*Stmt),
+		salt:               RandomBuf(20),
+	}
+	c.closed.Store(false)
+
+	if err := c.handshake(); err != nil {
+		c.Close()
+		return nil, err
+	}
+
+	return c, nil
+}
+
+// NewPrefabricateConn: create connection with customized server settings and pre-authenticated
+func NewPrefabricateConn(conn net.Conn, serverConf *Server, p CredentialProvider) (*Conn, error) {
+	var packetConn *packet.Conn
+	if serverConf.tlsConfig != nil {
+		packetConn = packet.NewTLSConn(conn)
+	} else {
+		packetConn = packet.NewConn(conn)
+	}
+
+	c := &Conn{
+		Conn:               packetConn,
+		serverConf:         serverConf,
+		credentialProvider: p,
 		connectionID:       atomic.AddUint32(&baseConnID, 1),
 		stmts:              make(map[uint32]*Stmt),
 		salt:               RandomBuf(20),
@@ -194,4 +222,12 @@ func (c *Conn) HasStatus(status uint16) bool {
 
 func (c *Conn) SetWarnings(warnings uint16) {
 	c.warnings = warnings
+}
+
+func (c *Conn) GetDbName() string {
+	return c.dbname
+}
+
+func (c *Conn) SetHandler(h Handler) {
+	c.h = h
 }
