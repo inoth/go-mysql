@@ -99,27 +99,27 @@ func NewCustomizedConn(conn net.Conn, serverConf *Server, p CredentialProvider, 
 }
 
 // NewPrefabricateConn: create connection with customized server settings and pre-authenticated
-func NewPrefabricateConn() *Conn {
+func NewPrefabricateConn(serverConf *Server, p CredentialProvider) *Conn {
 	c := &Conn{
-		connectionID: atomic.AddUint32(&baseConnID, 1),
-		stmts:        make(map[uint32]*Stmt),
-		salt:         RandomBuf(20),
+		serverConf:         serverConf,
+		credentialProvider: p,
+		connectionID:       atomic.AddUint32(&baseConnID, 1),
+		stmts:              make(map[uint32]*Stmt),
+		salt:               RandomBuf(20),
 	}
 	c.closed.Store(false)
 
 	return c
 }
 
-func (c *Conn) Handshake(conn net.Conn, serverConf *Server, p CredentialProvider) error {
+func (c *Conn) Handshake(conn net.Conn) error {
 	var packetConn *packet.Conn
-	if serverConf.tlsConfig != nil {
+	if c.serverConf.tlsConfig != nil {
 		packetConn = packet.NewTLSConn(conn)
 	} else {
 		packetConn = packet.NewConn(conn)
 	}
 	c.Conn = packetConn
-	c.serverConf = serverConf
-	c.credentialProvider = p
 
 	if err := c.handshake(); err != nil {
 		c.Close()
@@ -130,8 +130,6 @@ func (c *Conn) Handshake(conn net.Conn, serverConf *Server, p CredentialProvider
 
 func (c *Conn) Reset() {
 	c.Conn = nil
-	c.serverConf = nil
-	c.credentialProvider = nil
 	c.h = nil
 	c.dbname = ""
 	c.closed.Store(false)
