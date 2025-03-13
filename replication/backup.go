@@ -8,19 +8,19 @@ import (
 	"sync"
 	"time"
 
-	. "github.com/go-mysql-org/go-mysql/mysql"
+	"github.com/go-mysql-org/go-mysql/mysql"
 	"github.com/pingcap/errors"
 )
 
 // StartBackup starts the backup process for the binary log and writes to the backup directory.
-func (b *BinlogSyncer) StartBackup(backupDir string, p Position, timeout time.Duration) error {
-	err := os.MkdirAll(backupDir, 0755)
+func (b *BinlogSyncer) StartBackup(backupDir string, p mysql.Position, timeout time.Duration) error {
+	err := os.MkdirAll(backupDir, 0o755)
 	if err != nil {
 		return errors.Trace(err)
 	}
 	if b.cfg.SynchronousEventHandler == nil {
 		return b.StartBackupWithHandler(p, timeout, func(filename string) (io.WriteCloser, error) {
-			return os.OpenFile(path.Join(backupDir, filename), os.O_CREATE|os.O_WRONLY, 0644)
+			return os.OpenFile(path.Join(backupDir, filename), os.O_CREATE|os.O_WRONLY, 0o644)
 		})
 	} else {
 		return b.StartSynchronousBackup(p, timeout)
@@ -36,8 +36,9 @@ func (b *BinlogSyncer) StartBackup(backupDir string, p Position, timeout time.Du
 //   - timeout: The maximum duration to wait for new binlog events before stopping the backup process.
 //     If set to 0, a default very long timeout (30 days) is used instead.
 //   - handler: A function that takes a binlog filename and returns an WriteCloser for writing raw events to.
-func (b *BinlogSyncer) StartBackupWithHandler(p Position, timeout time.Duration,
-	handler func(binlogFilename string) (io.WriteCloser, error)) (retErr error) {
+func (b *BinlogSyncer) StartBackupWithHandler(p mysql.Position, timeout time.Duration,
+	handler func(binlogFilename string) (io.WriteCloser, error),
+) (retErr error) {
 	if timeout == 0 {
 		// a very long timeout here
 		timeout = 30 * 3600 * 24 * time.Second
@@ -68,10 +69,10 @@ func (b *BinlogSyncer) StartBackupWithHandler(p Position, timeout time.Duration,
 		}
 	}()
 
-	for {
-		ctx, cancel := context.WithTimeout(context.Background(), timeout)
-		defer cancel()
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
 
+	for {
 		select {
 		case <-ctx.Done():
 			return nil
@@ -89,7 +90,7 @@ func (b *BinlogSyncer) StartBackupWithHandler(p Position, timeout time.Duration,
 }
 
 // StartSynchronousBackup starts the backup process using the SynchronousEventHandler in the BinlogSyncerConfig.
-func (b *BinlogSyncer) StartSynchronousBackup(p Position, timeout time.Duration) error {
+func (b *BinlogSyncer) StartSynchronousBackup(p mysql.Position, timeout time.Duration) error {
 	if b.cfg.SynchronousEventHandler == nil {
 		return errors.New("SynchronousEventHandler must be set in BinlogSyncerConfig to use StartSynchronousBackup")
 	}
