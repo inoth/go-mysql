@@ -4,19 +4,18 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"log/slog"
 	"net"
 	"os"
 	"os/exec"
 	"regexp"
 	"strings"
 
-	. "github.com/go-mysql-org/go-mysql/mysql"
+	"github.com/go-mysql-org/go-mysql/mysql"
 	"github.com/pingcap/errors"
-	"github.com/siddontang/go-log/log"
-	"github.com/siddontang/go-log/loggers"
 )
 
-// Unlick mysqldump, Dumper is designed for parsing and syning data easily.
+// Unlike mysqldump, Dumper is designed for parsing and syning data easily.
 type Dumper struct {
 	// mysqldump execution path, like mysqldump or /usr/bin/mysqldump, etc...
 	ExecutionPath string
@@ -51,7 +50,7 @@ type Dumper struct {
 	mysqldumpVersion    string
 	sourceDataSupported bool
 
-	Logger loggers.Advanced
+	Logger *slog.Logger
 }
 
 func NewDumper(executionPath string, addr string, user string, password string) (*Dumper, error) {
@@ -81,7 +80,7 @@ func NewDumper(executionPath string, addr string, user string, password string) 
 	d.Password = password
 	d.Tables = make([]string, 0, 16)
 	d.Databases = make([]string, 0, 16)
-	d.Charset = DEFAULT_CHARSET
+	d.Charset = mysql.DEFAULT_CHARSET
 	d.IgnoreTables = make(map[string][]string)
 	d.ExtraOptions = make([]string, 0, 5)
 	d.masterDataSkipped = false
@@ -96,8 +95,7 @@ func NewDumper(executionPath string, addr string, user string, password string) 
 
 	d.ErrOut = os.Stderr
 
-	streamHandler, _ := log.NewStreamHandler(os.Stdout)
-	d.Logger = log.NewDefault(streamHandler)
+	d.Logger = slog.Default()
 
 	return d, nil
 }
@@ -312,7 +310,7 @@ func (d *Dumper) Dump(w io.Writer) error {
 	}
 
 	args[passwordArgIndex] = "--password=******"
-	d.Logger.Infof("exec mysqldump with %v", args)
+	d.Logger.Info("exec mysqldump with", slog.Any("args", args))
 	args[passwordArgIndex] = passwordArg
 	cmd := exec.Command(d.ExecutionPath, args...)
 

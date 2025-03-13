@@ -3,7 +3,6 @@ package mysql
 import (
 	"bytes"
 	"encoding/binary"
-	"fmt"
 	"math"
 	"strconv"
 	"time"
@@ -56,7 +55,7 @@ func toBinaryDateTime(t time.Time) ([]byte, error) {
 	var buf bytes.Buffer
 
 	if t.IsZero() {
-		return nil, fmt.Errorf("zero time")
+		return nil, nil
 	}
 
 	year, month, day := t.Year(), t.Month(), t.Day()
@@ -169,9 +168,7 @@ func formatField(field *Field, value interface{}) error {
 }
 
 func BuildSimpleTextResultset(names []string, values [][]interface{}) (*Resultset, error) {
-	r := new(Resultset)
-
-	r.Fields = make([]*Field, len(names))
+	r := NewResultset(len(names))
 
 	var b []byte
 
@@ -215,7 +212,6 @@ func BuildSimpleTextResultset(names []string, values [][]interface{}) (*Resultse
 				}
 			}
 			b, err = FormatTextValue(value)
-
 			if err != nil {
 				return nil, errors.Trace(err)
 			}
@@ -235,9 +231,7 @@ func BuildSimpleTextResultset(names []string, values [][]interface{}) (*Resultse
 }
 
 func BuildSimpleBinaryResultset(names []string, values [][]interface{}) (*Resultset, error) {
-	r := new(Resultset)
-
-	r.Fields = make([]*Field, len(names))
+	r := NewResultset(len(names))
 
 	var b []byte
 
@@ -274,7 +268,6 @@ func BuildSimpleBinaryResultset(names []string, values [][]interface{}) (*Result
 			}
 
 			b, err = formatBinaryValue(value)
-
 			if err != nil {
 				return nil, errors.Trace(err)
 			}

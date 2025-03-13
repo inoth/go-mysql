@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"net"
 	"os"
 	"regexp"
@@ -18,9 +19,9 @@ import (
 	"github.com/go-mysql-org/go-mysql/mysql"
 	"github.com/go-mysql-org/go-mysql/replication"
 	"github.com/go-mysql-org/go-mysql/schema"
+	"github.com/go-mysql-org/go-mysql/utils"
 	"github.com/pingcap/errors"
 	"github.com/pingcap/tidb/pkg/parser"
-	"github.com/siddontang/go-log/log"
 )
 
 // Canal can sync your MySQL data into everywhere, like Elasticsearch, Redis, etc...
@@ -57,14 +58,15 @@ type Canal struct {
 }
 
 // canal will retry fetching unknown table's meta after UnknownTableRetryPeriod
-var UnknownTableRetryPeriod = time.Second * time.Duration(10)
-var ErrExcludedTable = errors.New("excluded table meta")
+var (
+	UnknownTableRetryPeriod = time.Second * time.Duration(10)
+	ErrExcludedTable        = errors.New("excluded table meta")
+)
 
 func NewCanal(cfg *Config) (*Canal, error) {
 	c := new(Canal)
 	if cfg.Logger == nil {
-		streamHandler, _ := log.NewStreamHandler(os.Stdout)
-		cfg.Logger = log.NewDefault(streamHandler)
+		cfg.Logger = slog.Default()
 	}
 	if cfg.Dialer == nil {
 		dialer := &net.Dialer{}
@@ -231,7 +233,7 @@ func (c *Canal) run() error {
 		c.cancel()
 	}()
 
-	c.master.UpdateTimestamp(uint32(time.Now().Unix()))
+	c.master.UpdateTimestamp(uint32(utils.Now().Unix()))
 
 	if !c.dumped {
 		c.dumped = true
@@ -240,14 +242,14 @@ func (c *Canal) run() error {
 		close(c.dumpDoneCh)
 
 		if err != nil {
-			c.cfg.Logger.Errorf("canal dump mysql err: %v", err)
+			c.cfg.Logger.Error("canal dump mysql err", slog.Any("error", err))
 			return errors.Trace(err)
 		}
 	}
 
 	if err := c.runSyncBinlog(); err != nil {
 		if errors.Cause(err) != context.Canceled {
-			c.cfg.Logger.Errorf("canal start sync binlog err: %v", err)
+			c.cfg.Logger.Error("canal start sync binlog err", slog.Any("error", err))
 			return errors.Trace(err)
 		}
 	}
@@ -256,7 +258,7 @@ func (c *Canal) run() error {
 }
 
 func (c *Canal) Close() {
-	c.cfg.Logger.Infof("closing canal")
+	c.cfg.Logger.Info("closing canal")
 	c.m.Lock()
 	defer c.m.Unlock()
 
@@ -373,10 +375,10 @@ func (c *Canal) GetTable(db string, table string) (*schema.Table, error) {
 		// if DiscardNoMetaRowEvent is true, we just log this error
 		if c.cfg.DiscardNoMetaRowEvent {
 			c.tableLock.Lock()
-			c.errorTablesGetTime[key] = time.Now()
+			c.errorTablesGetTime[key] = utils.Now()
 			c.tableLock.Unlock()
 			// log error and return ErrMissingTableMeta
-			c.cfg.Logger.Errorf("canal get table meta err: %v", errors.Trace(err))
+			c.cfg.Logger.Error("canal get table meta err", slog.Any("error", errors.Trace(err)))
 			return nil, schema.ErrMissingTableMeta
 		}
 		return nil, err

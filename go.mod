@@ -15,11 +15,11 @@ require (
 	github.com/pingcap/errors v0.11.5-0.20240311024730-e056997136bb
 	github.com/pingcap/tidb/pkg/parser v0.0.0-20241118164214-4f047be191be
 	github.com/shopspring/decimal v1.2.0
-	github.com/siddontang/go-log v0.0.0-20180807004314-8d05993dda07
 	github.com/stretchr/testify v1.8.4
 )
 
 require (
+	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/pingcap/failpoint v0.0.0-20240528011301-b51a646c7c86 // indirect

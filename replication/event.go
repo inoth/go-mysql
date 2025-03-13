@@ -11,10 +11,10 @@ import (
 	"time"
 	"unicode"
 
+	"github.com/go-mysql-org/go-mysql/mysql"
+	"github.com/go-mysql-org/go-mysql/serialization"
 	"github.com/google/uuid"
 	"github.com/pingcap/errors"
-
-	. "github.com/go-mysql-org/go-mysql/mysql"
 )
 
 const (
@@ -40,7 +40,7 @@ func (e *BinlogEvent) Dump(w io.Writer) {
 }
 
 type Event interface {
-	//Dump Event, format like python-mysql-replication
+	// Dump Event, format like python-mysql-replication
 	Dump(w io.Writer)
 
 	Decode(data []byte) error
@@ -49,10 +49,10 @@ type Event interface {
 type EventError struct {
 	Header *EventHeader
 
-	//Error message
+	// Error message
 	Err string
 
-	//Event data
+	// Event data
 	Data []byte
 }
 
@@ -103,7 +103,7 @@ func (h *EventHeader) Decode(data []byte) error {
 
 func (h *EventHeader) Dump(w io.Writer) {
 	fmt.Fprintf(w, "=== %s ===\n", h.EventType)
-	fmt.Fprintf(w, "Date: %s\n", time.Unix(int64(h.Timestamp), 0).Format(TimeFormat))
+	fmt.Fprintf(w, "Date: %s\n", time.Unix(int64(h.Timestamp), 0).Format(mysql.TimeFormat))
 	fmt.Fprintf(w, "Log position: %d\n", h.LogPos)
 	fmt.Fprintf(w, "Event size: %d\n", h.EventSize)
 }
@@ -201,9 +201,9 @@ func (e *FormatDescriptionEvent) Decode(data []byte) error {
 func (e *FormatDescriptionEvent) Dump(w io.Writer) {
 	fmt.Fprintf(w, "Version: %d\n", e.Version)
 	fmt.Fprintf(w, "Server version: %s\n", e.ServerVersion)
-	//fmt.Fprintf(w, "Create date: %s\n", time.Unix(int64(e.CreateTimestamp), 0).Format(TimeFormat))
+	// fmt.Fprintf(w, "Create date: %s\n", time.Unix(int64(e.CreateTimestamp), 0).Format(TimeFormat))
 	fmt.Fprintf(w, "Checksum algorithm: %d\n", e.ChecksumAlgorithm)
-	//fmt.Fprintf(w, "Event header lengths: \n%s", hex.Dump(e.EventTypeHeaderLengths))
+	// fmt.Fprintf(w, "Event header lengths: \n%s", hex.Dump(e.EventTypeHeaderLengths))
 	fmt.Fprintln(w)
 }
 
@@ -335,7 +335,7 @@ type XIDEvent struct {
 	XID uint64
 
 	// in fact XIDEvent dosen't have the GTIDSet information, just for beneficial to use
-	GSet GTIDSet
+	GSet mysql.GTIDSet
 }
 
 func (e *XIDEvent) Decode(data []byte) error {
@@ -363,7 +363,7 @@ type QueryEvent struct {
 	compressed bool
 
 	// in fact QueryEvent dosen't have the GTIDSet information, just for beneficial to use
-	GSet GTIDSet
+	GSet mysql.GTIDSet
 }
 
 func (e *QueryEvent) Decode(data []byte) error {
@@ -390,11 +390,11 @@ func (e *QueryEvent) Decode(data []byte) error {
 	e.Schema = data[pos : pos+int(schemaLength)]
 	pos += int(schemaLength)
 
-	//skip 0x00
+	// skip 0x00
 	pos++
 
 	if e.compressed {
-		decompressedQuery, err := DecompressMariadbData(data[pos:])
+		decompressedQuery, err := mysql.DecompressMariadbData(data[pos:])
 		if err != nil {
 			return err
 		}
@@ -409,7 +409,7 @@ func (e *QueryEvent) Dump(w io.Writer) {
 	fmt.Fprintf(w, "Slave proxy ID: %d\n", e.SlaveProxyID)
 	fmt.Fprintf(w, "Execution time: %d\n", e.ExecutionTime)
 	fmt.Fprintf(w, "Error code: %d\n", e.ErrorCode)
-	//fmt.Fprintf(w, "Status vars: \n%s", hex.Dump(e.StatusVars))
+	// fmt.Fprintf(w, "Status vars: \n%s", hex.Dump(e.StatusVars))
 	fmt.Fprintf(w, "Schema: %s\n", e.Schema)
 	fmt.Fprintf(w, "Query: %s\n", e.Query)
 	if e.GSet != nil {
@@ -421,6 +421,7 @@ func (e *QueryEvent) Dump(w io.Writer) {
 type GTIDEvent struct {
 	CommitFlag     uint8
 	SID            []byte
+	Tag            string
 	GNO            int64
 	LastCommitted  int64
 	SequenceNumber int64
@@ -461,12 +462,12 @@ func (e *GTIDEvent) Decode(data []byte) error {
 			if len(data)-pos < 7 {
 				return nil
 			}
-			e.ImmediateCommitTimestamp = FixedLengthInt(data[pos : pos+7])
+			e.ImmediateCommitTimestamp = mysql.FixedLengthInt(data[pos : pos+7])
 			pos += 7
 			if (e.ImmediateCommitTimestamp & (uint64(1) << 55)) != 0 {
 				// If the most significant bit set, another 7 byte follows representing OriginalCommitTimestamp
 				e.ImmediateCommitTimestamp &= ^(uint64(1) << 55)
-				e.OriginalCommitTimestamp = FixedLengthInt(data[pos : pos+7])
+				e.OriginalCommitTimestamp = mysql.FixedLengthInt(data[pos : pos+7])
 				pos += 7
 			} else {
 				// Otherwise OriginalCommitTimestamp == ImmediateCommitTimestamp
@@ -478,7 +479,7 @@ func (e *GTIDEvent) Decode(data []byte) error {
 				return nil
 			}
 			var n int
-			e.TransactionLength, _, n = LengthEncodedInt(data[pos:])
+			e.TransactionLength, _, n = mysql.LengthEncodedInt(data[pos:])
 			pos += n
 
 			// IMMEDIATE_SERVER_VERSION_LENGTH = 4
@@ -513,7 +514,11 @@ func (e *GTIDEvent) Dump(w io.Writer) {
 
 	fmt.Fprintf(w, "Commit flag: %d\n", e.CommitFlag)
 	u, _ := uuid.FromBytes(e.SID)
-	fmt.Fprintf(w, "GTID_NEXT: %s:%d\n", u.String(), e.GNO)
+	if e.Tag != "" {
+		fmt.Fprintf(w, "GTID_NEXT: %s:%s:%d\n", u.String(), e.Tag, e.GNO)
+	} else {
+		fmt.Fprintf(w, "GTID_NEXT: %s:%d\n", u.String(), e.GNO)
+	}
 	fmt.Fprintf(w, "LAST_COMMITTED: %d\n", e.LastCommitted)
 	fmt.Fprintf(w, "SEQUENCE_NUMBER: %d\n", e.SequenceNumber)
 	fmt.Fprintf(w, "Immediate commmit timestamp: %d (%s)\n", e.ImmediateCommitTimestamp, fmtTime(e.ImmediateCommitTime()))
@@ -524,12 +529,12 @@ func (e *GTIDEvent) Dump(w io.Writer) {
 	fmt.Fprintln(w)
 }
 
-func (e *GTIDEvent) GTIDNext() (GTIDSet, error) {
+func (e *GTIDEvent) GTIDNext() (mysql.GTIDSet, error) {
 	u, err := uuid.FromBytes(e.SID)
 	if err != nil {
 		return nil, err
 	}
-	return ParseMysqlGTIDSet(strings.Join([]string{u.String(), strconv.FormatInt(e.GNO, 10)}, ":"))
+	return mysql.ParseMysqlGTIDSet(strings.Join([]string{u.String(), strconv.FormatInt(e.GNO, 10)}, ":"))
 }
 
 // ImmediateCommitTime returns the commit time of this trx on the immediate server
@@ -542,6 +547,202 @@ func (e *GTIDEvent) ImmediateCommitTime() time.Time {
 // or zero time if not available.
 func (e *GTIDEvent) OriginalCommitTime() time.Time {
 	return microSecTimestampToTime(e.OriginalCommitTimestamp)
+}
+
+// GtidTaggedLogEvent is for a GTID event with a tag.
+// This is similar to GTIDEvent, but it has a tag and uses a different serialization format.
+type GtidTaggedLogEvent struct {
+	GTIDEvent
+}
+
+func (e *GtidTaggedLogEvent) Decode(data []byte) error {
+	msg := serialization.Message{
+		Format: serialization.Format{
+			Fields: []serialization.Field{
+				{
+					Name: "gtid_flags",
+					Type: &serialization.FieldIntFixed{
+						Length: 1,
+					},
+				},
+				{
+					Name: "uuid",
+					Type: &serialization.FieldIntFixed{
+						Length: 16,
+					},
+				},
+				{
+					Name: "gno",
+					Type: &serialization.FieldIntVar{},
+				},
+				{
+					Name: "tag",
+					Type: &serialization.FieldString{},
+				},
+				{
+					Name: "last_committed",
+					Type: &serialization.FieldIntVar{},
+				},
+				{
+					Name: "sequence_number",
+					Type: &serialization.FieldIntVar{},
+				},
+				{
+					Name: "immediate_commit_timestamp",
+					Type: &serialization.FieldUintVar{},
+				},
+				{
+					Name:     "original_commit_timestamp",
+					Type:     &serialization.FieldUintVar{},
+					Optional: true,
+				},
+				{
+					Name: "transaction_length",
+					Type: &serialization.FieldUintVar{},
+				},
+				{
+					Name: "immediate_server_version",
+					Type: &serialization.FieldUintVar{},
+				},
+				{
+					Name:     "original_server_version",
+					Type:     &serialization.FieldUintVar{},
+					Optional: true,
+				},
+				{
+					Name:     "commit_group_ticket",
+					Optional: true,
+				},
+			},
+		},
+	}
+
+	err := serialization.Unmarshal(data, &msg)
+	if err != nil {
+		return err
+	}
+
+	f, err := msg.GetFieldByName("gtid_flags")
+	if err != nil {
+		return err
+	}
+	if v, ok := f.Type.(*serialization.FieldIntFixed); ok {
+		e.CommitFlag = v.Value[0]
+	} else {
+		return errors.New("failed to get gtid_flags field")
+	}
+
+	f, err = msg.GetFieldByName("uuid")
+	if err != nil {
+		return err
+	}
+	if v, ok := f.Type.(*serialization.FieldIntFixed); ok {
+		e.SID = v.Value
+	} else {
+		return errors.New("failed to get uuid field")
+	}
+
+	f, err = msg.GetFieldByName("gno")
+	if err != nil {
+		return err
+	}
+	if v, ok := f.Type.(*serialization.FieldIntVar); ok {
+		e.GNO = v.Value
+	} else {
+		return errors.New("failed to get gno field")
+	}
+
+	f, err = msg.GetFieldByName("tag")
+	if err != nil {
+		return err
+	}
+	if v, ok := f.Type.(*serialization.FieldString); ok {
+		e.Tag = v.Value
+	} else {
+		return errors.New("failed to get tag field")
+	}
+
+	f, err = msg.GetFieldByName("last_committed")
+	if err != nil {
+		return err
+	}
+	if v, ok := f.Type.(*serialization.FieldIntVar); ok {
+		e.LastCommitted = v.Value
+	} else {
+		return errors.New("failed to get last_committed field")
+	}
+
+	f, err = msg.GetFieldByName("sequence_number")
+	if err != nil {
+		return err
+	}
+	if v, ok := f.Type.(*serialization.FieldIntVar); ok {
+		e.SequenceNumber = v.Value
+	} else {
+		return errors.New("failed to get sequence_number field")
+	}
+
+	f, err = msg.GetFieldByName("immediate_commit_timestamp")
+	if err != nil {
+		return err
+	}
+	if v, ok := f.Type.(*serialization.FieldUintVar); ok {
+		e.ImmediateCommitTimestamp = v.Value
+	} else {
+		return errors.New("failed to get immediate_commit_timestamp field")
+	}
+
+	f, err = msg.GetFieldByName("original_commit_timestamp")
+	if err != nil {
+		return err
+	}
+	if v, ok := f.Type.(*serialization.FieldUintVar); ok {
+		if f.Skipped {
+			e.OriginalCommitTimestamp = e.ImmediateCommitTimestamp
+		} else {
+			e.OriginalCommitTimestamp = v.Value
+		}
+	} else {
+		return errors.New("failed to get original_commit_timestamp field")
+	}
+
+	f, err = msg.GetFieldByName("immediate_server_version")
+	if err != nil {
+		return err
+	}
+	if v, ok := f.Type.(*serialization.FieldUintVar); ok {
+		e.ImmediateServerVersion = uint32(v.Value)
+	} else {
+		return errors.New("failed to get immediate_server_version field")
+	}
+
+	f, err = msg.GetFieldByName("original_server_version")
+	if err != nil {
+		return err
+	}
+	if v, ok := f.Type.(*serialization.FieldUintVar); ok {
+		if f.Skipped {
+			e.OriginalServerVersion = e.ImmediateServerVersion
+		} else {
+			e.OriginalServerVersion = uint32(v.Value)
+		}
+	} else {
+		return errors.New("failed to get original_server_version field")
+	}
+
+	f, err = msg.GetFieldByName("transaction_length")
+	if err != nil {
+		return err
+	}
+	if v, ok := f.Type.(*serialization.FieldUintVar); ok {
+		e.TransactionLength = v.Value
+	} else {
+		return errors.New("failed to get transaction_length field")
+	}
+
+	// TODO: add and test commit_group_ticket
+
+	return nil
 }
 
 type BeginLoadQueryEvent struct {
@@ -655,7 +856,7 @@ func (e *MariadbBinlogCheckPointEvent) Dump(w io.Writer) {
 }
 
 type MariadbGTIDEvent struct {
-	GTID     MariadbGTID
+	GTID     mysql.MariadbGTID
 	Flags    byte
 	CommitID uint64
 }
@@ -695,12 +896,12 @@ func (e *MariadbGTIDEvent) Dump(w io.Writer) {
 	fmt.Fprintln(w)
 }
 
-func (e *MariadbGTIDEvent) GTIDNext() (GTIDSet, error) {
-	return ParseMariadbGTIDSet(e.GTID.String())
+func (e *MariadbGTIDEvent) GTIDNext() (mysql.GTIDSet, error) {
+	return mysql.ParseMariadbGTIDSet(e.GTID.String())
 }
 
 type MariadbGTIDListEvent struct {
-	GTIDs []MariadbGTID
+	GTIDs []mysql.MariadbGTID
 }
 
 func (e *MariadbGTIDListEvent) Decode(data []byte) error {
@@ -710,7 +911,7 @@ func (e *MariadbGTIDListEvent) Decode(data []byte) error {
 
 	count := v & uint32((1<<28)-1)
 
-	e.GTIDs = make([]MariadbGTID, count)
+	e.GTIDs = make([]mysql.MariadbGTID, count)
 
 	for i := uint32(0); i < count; i++ {
 		e.GTIDs[i].DomainID = binary.LittleEndian.Uint32(data[pos:])

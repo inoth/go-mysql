@@ -1,14 +1,32 @@
 # go-mysql
 
-A pure go library to handle MySQL network protocol and replication as used by MySQL and MariaDB.
+A pure Go library to handle MySQL network protocol and replication as used by MySQL and MariaDB.
 
 ![semver](https://img.shields.io/github/v/tag/go-mysql-org/go-mysql)
 ![example workflow](https://github.com/go-mysql-org/go-mysql/actions/workflows/ci.yml/badge.svg)
 ![gomod version](https://img.shields.io/github/go-mod/go-version/go-mysql-org/go-mysql/master)
 [![Go Reference](https://pkg.go.dev/badge/github.com/go-mysql-org/go-mysql.svg)](https://pkg.go.dev/github.com/go-mysql-org/go-mysql)
 
+## Platform Support
+
+As a pure Go library, this project follows [Go's minimum requirements](https://go.dev/wiki/MinimumRequirements).
+
+This library has been tested or deployed on the following operating systems and architectures:
+
+| Operating System | Architecture | Runtime Supported | CI | Notes                                                                                                                          |
+|------------------|--------------|-------------------|----|--------------------------------------------------------------------------------------------------------------------------------|
+| Linux            | amd64        | ✅                | ✅ | Check GitHub Actions of this project.                                                                                          |
+| Linux            | s390x        | ✅                | ✅ | A daily CI runs on an s390x VM, supported by the [IBM Z and LinuxONE Community](https://www.ibm.com/community/z/open-source/). |
+| Linux            | arm64        | ✅                | ❌ | Deployed in a production environment of a user.                                                                                |
+| FreeBSD          | amd64        | ✅                | ❌ | Sporadically tested by developers.                                                                                             |
+
+Other platforms supported by Go may also work, but they have not been verified. Feel free to report your test results.
+
+This library is not compatible with [TinyGo](https://tinygo.org/).
+
 ## Changelog
-This repo uses [Changelog](CHANGELOG.md).
+
+This library uses [Changelog](CHANGELOG.md).
 
 ---
 # Content
@@ -129,7 +147,6 @@ package main
 
 import (
 	"github.com/go-mysql-org/go-mysql/canal"
-	"github.com/siddontang/go-log/log"
 )
 
 type MyEventHandler struct {
@@ -172,54 +189,8 @@ You can see [go-mysql-elasticsearch](https://github.com/go-mysql-org/go-mysql-el
 
 Client package supports a simple MySQL connection driver which you can use it to communicate with MySQL server. 
 
-### Example
-
-```go
-import (
-	"github.com/go-mysql-org/go-mysql/client"
-)
-
-// Connect MySQL at 127.0.0.1:3306, with user root, an empty password and database test
-conn, _ := client.Connect("127.0.0.1:3306", "root", "", "test")
-
-// Or to use SSL/TLS connection if MySQL server supports TLS
-//conn, _ := client.Connect("127.0.0.1:3306", "root", "", "test", func(c *Conn) {c.UseSSL(true)})
-
-// Or to set your own client-side certificates for identity verification for security
-//tlsConfig := NewClientTLSConfig(caPem, certPem, keyPem, false, "your-server-name")
-//conn, _ := client.Connect("127.0.0.1:3306", "root", "", "test", func(c *Conn) {c.SetTLSConfig(tlsConfig)})
-
-conn.Ping()
-
-// Insert
-r, _ := conn.Execute(`insert into table (id, name) values (1, "abc")`)
-
-// Get last insert id
-println(r.InsertId)
-// Or affected rows count
-println(r.AffectedRows)
-
-// Select
-r, err := conn.Execute(`select id, name from table where id = 1`)
-
-// Close result for reuse memory (it's not necessary but very useful)
-defer r.Close()
-
-// Handle resultset
-v, _ := r.GetInt(0, 0)
-v, _ = r.GetIntByName(0, "id")
-
-// Direct access to fields
-for _, row := range r.Values {
-	for _, val := range row {
-		_ = val.Value() // interface{}
-		// or
-		if val.Type == mysql.FieldValueTypeFloat {
-			_ = val.AsFloat64() // float64
-		}
-	}   
-}
-```
+For an example see [`example_client_test.go`](client/example_client_test.go). You can run this testable example with 
+`go test -v ./client -run Example`.
 
 Tested MySQL versions for the client include:
 - 5.5.x
@@ -519,39 +490,22 @@ We pass all tests in https://github.com/bradfitz/go-sql-test using go-mysql driv
 
 ## Logging
 
-Logging by default is send to stdout.
+Logging uses [log/slog](https://pkg.go.dev/log/slog) and by default is sent to standard out.
 
-To disable logging completely:
-```go
-import "github.com/siddontang/go-log/log"
-...
-        nullHandler, _ := log.NewNullHandler()
-        cfg.Logger = log.NewDefault(nullHandler)
-```
-
-To write logging to any [`io.Writer`](https://pkg.go.dev/io#Writer):
-```go
-import "github.com/siddontang/go-log/log"
-...
-        w := ...
-        streamHandler, _ := log.NewStreamHandler(w)
-        cfg.Logger = log.NewDefault(streamHandler)
-```
-
-Or you can implement your own [`log.Handler`](https://pkg.go.dev/github.com/siddontang/go-log/log#Handler).
-
+For the old logging package `github.com/siddontang/go-log/log`, a converting package 
+`https://github.com/serprex/slog-siddontang` is available.
 ## How to migrate to this repo
 To change the used package in your repo it's enough to add this `replace` directive to your `go.mod`:
 ```
-replace github.com/siddontang/go-mysql => github.com/go-mysql-org/go-mysql v1.10.0
+replace github.com/siddontang/go-mysql => github.com/go-mysql-org/go-mysql v1.11.0
 ```
 
 This can be done by running this command:
 ```
-go mod edit -replace=github.com/siddontang/go-mysql=github.com/go-mysql-org/go-mysql@v1.10.0
+go mod edit -replace=github.com/siddontang/go-mysql=github.com/go-mysql-org/go-mysql@v1.11.0
 ```
 
-v1.10.0 - is the last tag in repo, feel free to choose what you want.
+v1.11.0 - is the last tag in repo, feel free to choose what you want.
 
 ## Credits
 
