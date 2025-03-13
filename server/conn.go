@@ -26,7 +26,7 @@ type Conn struct {
 	credentialProvider  CredentialProvider
 	user                string
 	password            string
-	dbname              string
+	databaseName        string
 	cachingSha2FullAuth bool
 
 	h Handler
@@ -105,7 +105,7 @@ func NewPrefabricateConn(serverConf *Server, p CredentialProvider) *Conn {
 		credentialProvider: p,
 		connectionID:       atomic.AddUint32(&baseConnID, 1),
 		stmts:              make(map[uint32]*Stmt),
-		salt:               RandomBuf(20),
+		salt:               mysql.RandomBuf(20),
 	}
 	c.closed.Store(false)
 
@@ -131,7 +131,7 @@ func (c *Conn) Handshake(conn net.Conn) error {
 func (c *Conn) Reset() {
 	c.Conn = nil
 	c.h = nil
-	c.dbname = ""
+	c.databaseName = ""
 	c.closed.Store(false)
 }
 
@@ -237,8 +237,8 @@ func (c *Conn) SetWarnings(warnings uint16) {
 	c.warnings = warnings
 }
 
-func (c *Conn) GetDbName() string {
-	return c.dbname
+func (c *Conn) DatabaseName() string {
+	return c.databaseName
 }
 
 func (c *Conn) SetHandler(h Handler) {

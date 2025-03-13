@@ -125,7 +125,7 @@ func (c *Conn) readDb(data []byte, pos int) (int, error) {
 		db := string(data[pos : pos+bytes.IndexByte(data[pos:], 0x00)])
 		pos += len(db) + 1
 
-		c.dbname = db
+		c.databaseName = db
 		if c.h != nil {
 			if err := c.h.UseDB(db); err != nil {
 				return 0, err
