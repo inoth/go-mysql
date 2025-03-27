@@ -112,15 +112,7 @@ func NewPrefabricateConn(serverConf *Server, p CredentialProvider) *Conn {
 	return c
 }
 
-func (c *Conn) Handshake(conn net.Conn) error {
-	var packetConn *packet.Conn
-	if c.serverConf.tlsConfig != nil {
-		packetConn = packet.NewTLSConn(conn)
-	} else {
-		packetConn = packet.NewConn(conn)
-	}
-	c.Conn = packetConn
-
+func (c *Conn) Handshake() error {
 	if err := c.handshake(); err != nil {
 		c.Close()
 		return err
@@ -128,11 +120,18 @@ func (c *Conn) Handshake(conn net.Conn) error {
 	return nil
 }
 
-func (c *Conn) Reset() {
-	c.Conn = nil
+func (c *Conn) Reset(conn net.Conn) {
 	c.h = nil
 	c.databaseName = ""
 	c.closed.Store(false)
+
+	var packetConn *packet.Conn
+	if c.serverConf.tlsConfig != nil {
+		packetConn = packet.NewTLSConn(conn)
+	} else {
+		packetConn = packet.NewConn(conn)
+	}
+	c.Conn = packetConn
 }
 
 func (c *Conn) handshake() error {
